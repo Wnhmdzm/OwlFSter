@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { parseFMSPastedData, formatCurrency } from '../lib/utils';
+import { parseFMSPastedData, formatCurrency, formatFMSDate } from '../lib/utils';
 import { 
   FMS_STATUS_OPTIONS, 
   CALL_RESPONSE_OPTIONS, 
@@ -92,13 +92,66 @@ export default function CaseForm({ initialMode }: CaseFormProps) {
     },
   });
 
+  const resetFormToDefaults = () => {
+    const fmsOfficer = profile?.uid || 'PS101435';
+    const currentTimeStr = formatFMSDate(new Date());
+    form.reset({
+      userId: '',
+      caseCreatedTime: '',
+      caseAssignedTime: currentTimeStr,
+      mode: '',
+      status: '',
+      eventType: '',
+      riskScore: 0,
+      ipAddress: '',
+      ruleId: '',
+      policyAction: '',
+      assignedTo: fmsOfficer,
+      amount: 0,
+      resolution: '',
+      firstCallTime: '',
+      reassignedToFA: '',
+      secondCallTime: '',
+      thirdCallTime: '',
+      callResponse: '',
+      remarks: '',
+      fmsStatusAction: '',
+    });
+  };
+
+  useEffect(() => {
+    resetFormToDefaults();
+  }, [profile]);
+
   const handlePaste = () => {
     const parsed = parseFMSPastedData(pasteData);
     if (parsed) {
       setEditingId(null);
-      form.reset();
-      Object.entries(parsed).forEach(([key, value]) => {
-        form.setValue(key as any, value);
+      const currentTimeStr = formatFMSDate(new Date());
+      const fmsOfficer = profile?.uid || 'PS101435';
+      form.reset({
+        userId: '',
+        caseCreatedTime: '',
+        mode: '',
+        status: '',
+        eventType: '',
+        riskScore: 0,
+        ipAddress: '',
+        ruleId: '',
+        policyAction: '',
+        amount: 0,
+        resolution: '',
+        firstCallTime: '',
+        reassignedToFA: '',
+        secondCallTime: '',
+        thirdCallTime: '',
+        callResponse: '',
+        remarks: '',
+        fmsStatusAction: '',
+        ...parsed,
+        // Override with automatically set requirements:
+        caseAssignedTime: currentTimeStr,
+        assignedTo: fmsOfficer
       });
       setSuccess('Data parsed successfully! Form populated.');
       setTimeout(() => setSuccess(null), 3000);
@@ -151,7 +204,7 @@ export default function CaseForm({ initialMode }: CaseFormProps) {
       await api.post('/api/cases', dataToSave);
       setSuccess(isUpdate ? 'Subsequent call logged as a new database entry!' : 'Case saved successfully!');
       
-      form.reset();
+      resetFormToDefaults();
       setPasteData('');
       setEditingId(null);
     } catch (err: any) {
@@ -278,7 +331,7 @@ export default function CaseForm({ initialMode }: CaseFormProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="label-minimal text-[10px]">Case Created Time</label>
                   <input type="text" className="input-minimal text-xs bg-white font-mono" {...form.register('caseCreatedTime')} />
@@ -286,6 +339,14 @@ export default function CaseForm({ initialMode }: CaseFormProps) {
                 <div>
                   <label className="label-minimal text-[10px]">Case Assigned Time</label>
                   <input type="text" className="input-minimal text-xs bg-white font-mono" {...form.register('caseAssignedTime')} />
+                </div>
+                <div>
+                  <label className="label-minimal text-[10px]">Mode / Channel</label>
+                  <input type="text" className="input-minimal text-xs bg-white uppercase font-mono" {...form.register('mode')} />
+                </div>
+                <div>
+                  <label className="label-minimal text-[10px]">FMS Case Status</label>
+                  <input type="text" className="input-minimal text-xs bg-white uppercase font-mono font-bold" {...form.register('status')} />
                 </div>
               </div>
             </div>
@@ -452,7 +513,7 @@ export default function CaseForm({ initialMode }: CaseFormProps) {
           <div className="px-6 py-4 bg-gray-50/50 border-t border-border flex justify-end gap-3 shrink-0">
             <button
               type="button"
-              onClick={() => { form.reset(); setEditingId(null); }}
+              onClick={() => { resetFormToDefaults(); setEditingId(null); }}
               className="px-6 py-2 bg-white border border-border text-gray-500 rounded text-[11px] font-bold hover:bg-gray-50 transition-colors uppercase tracking-widest"
             >
               Reset

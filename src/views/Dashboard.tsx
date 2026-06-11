@@ -37,16 +37,22 @@ import {
   CheckCircle2,
   Lock,
   ArrowRight,
-  HelpCircle
+  HelpCircle,
+  Download,
+  Search,
+  Check,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
+import * as XLSX from 'xlsx';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 const PROD_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#64748b'];
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'productivity'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'productivity' | 'resolution'>('overview');
   const [cases, setCases] = useState<FMSCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('2026-06-11');
@@ -57,6 +63,18 @@ export default function Dashboard() {
     callResponse: 'All',
     eventType: 'All',
     dateRange: 'All'
+  });
+
+  const [resolutionSearch, setResolutionSearch] = useState('');
+  const [visibleMetrics, setVisibleMetrics] = useState<Record<string, boolean>>({
+    confirmedFraud: true,
+    suspectedFraud: true,
+    confirmedGenuine: true,
+    assumedGenuine: true,
+    totalRib: true,
+    contacted: true,
+    unableToContact: true,
+    closeManual: true,
   });
 
   useEffect(() => {
@@ -320,6 +338,99 @@ export default function Dashboard() {
     }
   };
 
+  const resolutionStandings = useMemo(() => {
+    const stands: Record<string, {
+      psid: string;
+      confirmedFraud: number;
+      suspectedFraud: number;
+      confirmedGenuine: number;
+      assumedGenuine: number;
+      totalRib: number;
+      contacted: number;
+      unableToContact: number;
+      closeManual: number;
+    }> = {};
+
+    cases.forEach(c => {
+      const psid = c.assignedTo || 'Unassigned';
+      
+      if (!stands[psid]) {
+        stands[psid] = {
+          psid,
+          confirmedFraud: 0,
+          suspectedFraud: 0,
+          confirmedGenuine: 0,
+          assumedGenuine: 0,
+          totalRib: 0,
+          contacted: 0,
+          unableToContact: 0,
+          closeManual: 0,
+        };
+      }
+
+      const row = stands[psid];
+
+      // 1. FMS Resolutions Sum calculations:
+      const res = c.resolution;
+      if (res === Resolution.CONFIRM_FRAUD) {
+        row.confirmedFraud += 1;
+        row.totalRib += 1;
+      } else if (res === Resolution.SUSPECTED_FRAUD) {
+        row.suspectedFraud += 1;
+        row.totalRib += 1;
+      } else if (res === Resolution.CONFIRM_GENUINE) {
+        row.confirmedGenuine += 1;
+        row.totalRib += 1;
+      } else if (res === Resolution.ASSUME_GENUINE) {
+        row.assumedGenuine += 1;
+        row.totalRib += 1;
+      }
+
+      // 2. Call response Sum calculations:
+      const resp = c.callResponse;
+      if (resp === CallResponse.CONTACTED) {
+        row.contacted += 1;
+      } else if (resp === CallResponse.UNABLE_TO_CONTACT || (resp && typeof resp === 'string' && resp.toLowerCase().includes('unable'))) {
+        row.unableToContact += 1;
+      } else if (resp === CallResponse.CLOSE_MANUAL || (resp && typeof resp === 'string' && resp.toLowerCase().includes('close manual'))) {
+        row.closeManual += 1;
+      }
+    });
+
+    return Object.values(stands).sort((a, b) => b.totalRib - a.totalRib);
+  }, [cases]);
+
+  const filteredResolutionStandings = useMemo(() => {
+    return resolutionStandings.filter(item => 
+      item.psid.toLowerCase().includes(resolutionSearch.toLowerCase())
+    );
+  }, [resolutionSearch, resolutionStandings]);
+
+  const downloadResolutionReport = () => {
+    const dataToExport = filteredResolutionStandings.map((r, i) => ({
+      'No': i + 1,
+      'Officer (PSID)': r.psid,
+      'Confirmed Fraud': r.confirmedFraud,
+      'Suspected Fraud': r.suspectedFraud,
+      'Confirmed Genuine': r.confirmedGenuine,
+      'Assumed Genuine': r.assumedGenuine,
+      'Total RIB': r.totalRib,
+      'Contacted': r.contacted,
+      'Unable to Contact': r.unableToContact,
+      'Close Manual': r.closeManual
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Resolution Summary');
+    
+    // Auto-fit columns
+    const max_len = [5, 20, 15, 15, 15, 15, 12, 10, 18, 15];
+    worksheet['!cols'] = max_len.map(w => ({ wch: w }));
+
+    XLSX.writeFile(workbook, `FMS_Resolution_Scorecard_${new Date().toISOString().substring(0, 10)}.xlsx`);
+  };
+
   if (loading) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-12">
@@ -364,6 +475,19 @@ export default function Dashboard() {
           >
             <Layers size={13} className={activeTab === 'productivity' ? "text-indigo-600" : "text-slate-400"} />
             Productivity Monitor
+          </button>
+          <button
+            id="tab-resolution"
+            onClick={() => setActiveTab('resolution')}
+            className={cn(
+              "px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center gap-2 cursor-pointer",
+              activeTab === 'resolution' 
+                ? "bg-white text-slate-900 shadow-sm" 
+                : "text-slate-500 hover:text-slate-800"
+            )}
+          >
+            <Award size={13} className={activeTab === 'resolution' ? "text-indigo-600" : "text-slate-400"} />
+            Resolution Dashboard
           </button>
         </div>
       </div>
@@ -502,7 +626,7 @@ export default function Dashboard() {
             </div>
           </div>
         </React.Fragment>
-      ) : (
+      ) : activeTab === 'productivity' ? (
         <React.Fragment>
           {/* PRODUCTIVITY VIEW SECTION */}
           <div className="space-y-6" id="productivity-view">
@@ -932,6 +1056,241 @@ export default function Dashboard() {
 
               </div>
             )}
+          </div>
+        </React.Fragment>
+      ) : (
+        <React.Fragment>
+          {/* RESOLUTION GRAPH VIEW SECTION */}
+          <div className="space-y-6 animate-fade-in" id="resolution-dashboard-view">
+            <div className="minimal-card p-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-1">
+                  <h3 className="text-xs font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                    <Award size={14} /> Resolution Standings & Call Analyses
+                  </h3>
+                  <p className="text-slate-500 text-xs">
+                    View vertical bar graphs of FMS resolutions (Confirmed Fraud, Suspected Fraud, Confirmed Genuine, Assumed Genuine, Total RIB) and Call Responses (Contacted, Unable To Contact, Close Manual) aggregated across all PSID Users/Officers.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button 
+                    onClick={downloadResolutionReport}
+                    className="px-4 py-2.5 bg-neutral-900 border border-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow cursor-pointer transition-all"
+                    title="Export scorecards to excel spreadsheet"
+                  >
+                    <Download size={15} /> Export Standings
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Metric pill toggler */}
+            <div className="minimal-card p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                    Interactive Metric Visibility Filter
+                  </h4>
+                  <p className="text-slate-500 text-xs mt-0.5">Toggle buttons below to customize which vertical bars are shown on the comparison graph securely.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setVisibleMetrics({
+                        confirmedFraud: true, suspectedFraud: true, confirmedGenuine: true, assumedGenuine: true, totalRib: true,
+                        contacted: false, unableToContact: false, closeManual: false
+                      });
+                    }}
+                    className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-all"
+                  >
+                    FMS Preset Only
+                  </button>
+                  <button
+                    onClick={() => {
+                      setVisibleMetrics({
+                        confirmedFraud: false, suspectedFraud: false, confirmedGenuine: false, assumedGenuine: false, totalRib: false,
+                        contacted: true, unableToContact: true, closeManual: true
+                      });
+                    }}
+                    className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-lg transition-all"
+                  >
+                    Calls Preset Only
+                  </button>
+                  <button
+                    onClick={() => {
+                      setVisibleMetrics({
+                        confirmedFraud: true, suspectedFraud: true, confirmedGenuine: true, assumedGenuine: true, totalRib: true,
+                        contacted: true, unableToContact: true, closeManual: true
+                      });
+                    }}
+                    className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    onClick={() => {
+                      setVisibleMetrics({
+                        confirmedFraud: false, suspectedFraud: false, confirmedGenuine: false, assumedGenuine: false, totalRib: false,
+                        contacted: false, unableToContact: false, closeManual: false
+                      });
+                    }}
+                    className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-all"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  { key: 'confirmedFraud', label: 'Confirmed Fraud', activeBg: 'bg-red-50 border-red-300 text-red-700 ring-1 ring-red-200' },
+                  { key: 'suspectedFraud', label: 'Suspected Fraud', activeBg: 'bg-amber-50 border-amber-300 text-amber-700 ring-1 ring-amber-200' },
+                  { key: 'confirmedGenuine', label: 'Confirmed Genuine', activeBg: 'bg-emerald-50 border-emerald-300 text-emerald-700 ring-1 ring-emerald-200' },
+                  { key: 'assumedGenuine', label: 'Assumed Genuine', activeBg: 'bg-violet-50 border-violet-300 text-violet-700 ring-1 ring-violet-200' },
+                  { key: 'totalRib', label: 'Total RIB', activeBg: 'bg-slate-50 border-slate-350 text-slate-700 ring-1 ring-slate-200' },
+                  { key: 'contacted', label: 'Contacted', activeBg: 'bg-indigo-50 border-indigo-300 text-indigo-700 ring-1 ring-indigo-200' },
+                  { key: 'unableToContact', label: 'Unable to Contact', activeBg: 'bg-orange-50 border-orange-300 text-orange-700 ring-1 ring-orange-200' },
+                  { key: 'closeManual', label: 'Close Manual', activeBg: 'bg-pink-50 border-pink-300 text-pink-700 ring-1 ring-pink-200' }
+                ].map(opt => {
+                  const isActive = !!visibleMetrics[opt.key];
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => setVisibleMetrics(prev => ({ ...prev, [opt.key]: !prev[opt.key] }))}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm",
+                        isActive 
+                          ? opt.activeBg
+                          : 'bg-white border-slate-200 text-slate-450 hover:bg-slate-50'
+                      )}
+                    >
+                      {isActive ? (
+                        <CheckSquare size={14} className="text-slate-800" />
+                      ) : (
+                        <Square size={14} className="text-slate-400" />
+                      )}
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Vertical Bar Graph Card */}
+            <div className="minimal-card p-6">
+              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                <div>
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <TrendingUp size={14} className="text-indigo-600" /> All-Staff Resolution Standings Comparison (Vertical Bar Graph)
+                  </h4>
+                  <p className="text-slate-500 text-[11px] mt-0.5">
+                    Compare performance metrics vertically side-by-side. PSIDs are graphed chronologically on the horizontal plane.
+                  </p>
+                </div>
+                <div className="text-[10px] font-bold bg-neutral-100 text-neutral-650 px-2 py-0.5 rounded-md uppercase">
+                  Vertical Bars Graphed
+                </div>
+              </div>
+
+              <div className="h-96 pt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={resolutionStandings}
+                    margin={{ top: 20, right: 30, left: -20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="psid" tick={{ fill: '#475569', fontSize: 10, fontWeight: '700' }} stroke="#cbd5e1" />
+                    <YAxis tick={{ fill: '#475569', fontSize: 10, fontWeight: '700' }} stroke="#cbd5e1" />
+                    <Tooltip 
+                      contentStyle={{ background: '#0f172a', color: '#fff', borderRadius: '12px', border: 'none', fontSize: '11px', fontWeight: 'bold' }} 
+                    />
+                    <Legend wrapperStyle={{ fontSize: '10px', fontWeight: '600', paddingTop: '10px' }} />
+                    
+                    {visibleMetrics.confirmedFraud && <Bar dataKey="confirmedFraud" name="Confirmed Fraud" fill="#ef4444" radius={[3, 3, 0, 0]} />}
+                    {visibleMetrics.suspectedFraud && <Bar dataKey="suspectedFraud" name="Suspected Fraud" fill="#f59e0b" radius={[3, 3, 0, 0]} />}
+                    {visibleMetrics.confirmedGenuine && <Bar dataKey="confirmedGenuine" name="Confirmed Genuine" fill="#10b981" radius={[3, 3, 0, 0]} />}
+                    {visibleMetrics.assumedGenuine && <Bar dataKey="assumedGenuine" name="Assumed Genuine" fill="#8b5cf6" radius={[3, 3, 0, 0]} />}
+                    {visibleMetrics.totalRib && <Bar dataKey="totalRib" name="Total RIB" fill="#64748b" radius={[3, 3, 0, 0]} />}
+                    {visibleMetrics.contacted && <Bar dataKey="contacted" name="Contacted" fill="#6366f1" radius={[3, 3, 0, 0]} />}
+                    {visibleMetrics.unableToContact && <Bar dataKey="unableToContact" name="Unable to Contact" fill="#f97316" radius={[3, 3, 0, 0]} />}
+                    {visibleMetrics.closeManual && <Bar dataKey="closeManual" name="Close Manual" fill="#ec4899" radius={[3, 3, 0, 0]} />}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Scorecard standings spreadsheet grid */}
+            <div className="minimal-card p-6">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4 pb-4 border-b border-slate-100">
+                <div>
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <Users size={14} className="text-indigo-600" /> Granular Resolution Standing Scorecards
+                  </h4>
+                  <p className="text-slate-500 text-[11px] mt-0.5">
+                    Search and inspect exact sums of resolutions log-sheets recorded for every operational PSID profile.
+                  </p>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <Search size={14} className="absolute left-3 top-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={resolutionSearch}
+                    onChange={(e) => setResolutionSearch(e.target.value)}
+                    placeholder="Search by PSID name..."
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 hover:bg-slate-50/85 border border-slate-250 hover:border-slate-350 focus:border-indigo-500 text-xs font-semibold rounded-xl outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {filteredResolutionStandings.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-slate-450 italic text-xs uppercase tracking-wider font-extrabold">No matching officers found</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left font-sans text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-[10px] text-slate-400 font-extrabold uppercase tracking-widest bg-slate-50/50">
+                        <th className="py-3 px-4">No</th>
+                        <th className="py-3 px-4">Officer (PSID)</th>
+                        <th className="py-3 px-4 text-center text-red-655 font-bold">Confirmed Fraud</th>
+                        <th className="py-3 px-4 text-center text-amber-655 font-bold">Suspected Fraud</th>
+                        <th className="py-3 px-4 text-center text-emerald-655 font-bold">Confirmed Genuine</th>
+                        <th className="py-3 px-4 text-center text-violet-655 font-bold">Assumed Genuine</th>
+                        <th className="py-3 px-4 text-center text-indigo-750 font-black">Total RIB</th>
+                        <th className="py-3 px-4 text-center text-indigo-600">Contacted</th>
+                        <th className="py-3 px-4 text-center text-orange-600">Unable To Contact</th>
+                        <th className="py-3 px-4 text-center text-pink-600">Close Manual</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700 font-semibold">
+                      {filteredResolutionStandings.map((row, index) => (
+                        <tr key={row.psid} className="hover:bg-slate-50/80 transition-all">
+                          <td className="py-3.5 px-4 text-slate-400 text-[10px] font-mono">{index + 1}</td>
+                          <td className="py-3.5 px-4 text-slate-900 font-black tracking-tight">{row.psid}</td>
+                          
+                          {/* FMS sum columns */}
+                          <td className="py-3.5 px-4 text-center font-mono font-bold text-red-600">{row.confirmedFraud}</td>
+                          <td className="py-3.5 px-4 text-center font-mono font-bold text-amber-500">{row.suspectedFraud}</td>
+                          <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-600">{row.confirmedGenuine}</td>
+                          <td className="py-3.5 px-4 text-center font-mono font-bold text-violet-600">{row.assumedGenuine}</td>
+                          
+                          {/* Total RIB Column */}
+                          <td className="py-3.5 px-4 text-center font-mono font-black text-indigo-700 font-extrabold bg-indigo-50/20">
+                            {row.totalRib}
+                          </td>
+
+                          {/* Call Response columns */}
+                          <td className="py-3.5 px-4 text-center font-mono font-bold text-indigo-600 bg-indigo-50/5">{row.contacted}</td>
+                          <td className="py-3.5 px-4 text-center font-mono font-bold text-orange-500 bg-orange-50/5">{row.unableToContact}</td>
+                          <td className="py-3.5 px-4 text-center font-mono font-bold text-pink-500 bg-pink-50/5">{row.closeManual}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         </React.Fragment>
       )}

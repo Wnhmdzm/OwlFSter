@@ -18,7 +18,8 @@ export enum FMSStatusAction {
 export enum CallResponse {
   CONTACTED = 'Contacted',
   UNABLE_TO_CONTACT = 'Unable to contact',
-  ASSUME_GENUINE = 'Assume Genuine'
+  ASSUME_GENUINE = 'Assume Genuine',
+  CLOSE_MANUAL = 'Close Manual'
 }
 
 export enum Resolution {
