@@ -5,6 +5,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { UserProfile, UserRole } from '../types';
+import { apiFetch } from '../lib/api-emulator';
 
 interface AuthContextType {
   user: { id: string; email: string; role: UserRole; displayName: string } | null;
@@ -33,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = async (token: string) => {
     try {
-      const res = await fetch('/api/me', {
+      const res = await apiFetch('/api/me', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {

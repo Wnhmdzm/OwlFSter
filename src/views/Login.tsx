@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, LogIn, AlertCircle, Mail, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
 import OwlIcon from '../components/OwlIcon';
+import { apiFetch } from '../lib/api-emulator';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -23,7 +24,7 @@ export default function Login() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })

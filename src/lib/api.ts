@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { apiFetch } from './api-emulator';
+
 async function request(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('fms_token');
   const headers = {
@@ -11,7 +13,7 @@ async function request(endpoint: string, options: RequestInit = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(endpoint, { ...options, headers });
+  const response = await apiFetch(endpoint, { ...options, headers });
   
   if (response.status === 401 || response.status === 403) {
     // Handle auth errors (could trigger logout)
