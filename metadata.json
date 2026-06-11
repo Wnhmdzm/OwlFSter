@@ -1,0 +1,6 @@
+{
+  "name": "OwlFraudster",
+  "description": "Multi-user risk monitoring and fraud management system with smart data entry, real-time dashboards, and role-based access control.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
