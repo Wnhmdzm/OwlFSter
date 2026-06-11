@@ -240,6 +240,21 @@ async function startServer() {
     res.json({ success: true, id });
   });
 
+  app.delete('/api/cases', authenticateToken, (req: any, res) => {
+    db.prepare('DELETE FROM cases').run();
+    db.prepare('INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)')
+      .run(req.user.id, 'CLEAR_DATABASE', 'Cleared all cases from local_data database');
+    res.json({ success: true, message: 'All database cases purged successfully!' });
+  });
+
+  app.delete('/api/cases/:id', authenticateToken, (req: any, res) => {
+    const { id } = req.params;
+    db.prepare('DELETE FROM cases WHERE id = ?').run(id);
+    db.prepare('INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)')
+      .run(req.user.id, 'DELETE_CASE', `Purged Case ID: ${id}`);
+    res.json({ success: true, message: 'Case deleted successfully!' });
+  });
+
   // Admin: User Management
   app.get('/api/admin/users', authenticateToken, adminOnly, (req, res) => {
     const users = db.prepare('SELECT id, email, display_name as displayName, role, is_active as isActive, department FROM users').all();

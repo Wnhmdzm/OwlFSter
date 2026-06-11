@@ -385,6 +385,50 @@ async function handleEmulatedRequest(path: string, options: RequestInit = {}): P
     }
   }
 
+  // Route: DELETE /api/cases (Clear Database fallback)
+  if (path.startsWith('/api/cases') && method === 'DELETE' && !path.match(/\/api\/cases\/[^\/]+/)) {
+    saveCases([]);
+    const logs = getLogs();
+    logs.unshift({
+      id: logs.length + 1,
+      user_id: currentUser.id,
+      action: 'CLEAR_DATABASE',
+      details: 'Cleared all FMS cases from backup local database',
+      timestamp: new Date().toISOString()
+    });
+    saveLogs(logs);
+    return new Response(JSON.stringify({ success: true, message: 'All cases purged successfully!' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Route: DELETE /api/cases/:id (Delete Single Case fallback)
+  if (path.startsWith('/api/cases/') && method === 'DELETE') {
+    const match = path.match(/\/api\/cases\/([^\/\?]+)/);
+    if (match) {
+      const targetId = match[1];
+      const cases = getCases();
+      const filtered = cases.filter(c => c.id !== targetId);
+      saveCases(filtered);
+      
+      const logs = getLogs();
+      logs.unshift({
+        id: logs.length + 1,
+        user_id: currentUser.id,
+        action: 'DELETE_CASE',
+        details: `Purged Case ID: ${targetId} from backup local database`,
+        timestamp: new Date().toISOString()
+      });
+      saveLogs(logs);
+
+      return new Response(JSON.stringify({ success: true, message: 'Case deleted successfully' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
   // Admin checks for admin-only operations
   const isAdmin = currentUser.role === UserRole.ADMIN && currentUser.id === 'PS101435';
 

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../lib/api';
 import { FMSCase } from '../types';
 import { formatCurrency } from '../lib/utils';
@@ -16,7 +16,9 @@ import {
   FileSpreadsheet,
   User,
   Users,
-  Database as DbIcon
+  Database as DbIcon,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { cn } from '../lib/utils';
@@ -29,6 +31,51 @@ export default function Database() {
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTab, setSelectedTab] = useState<'all' | 'personal'>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmingPurge, setConfirmingPurge] = useState(false);
+
+  const initCaseDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (deletingId === id) {
+      executeDeleteCase(id);
+    } else {
+      setDeletingId(id);
+      setTimeout(() => {
+        setDeletingId(prev => prev === id ? null : prev);
+      }, 3000);
+    }
+  };
+
+  const executeDeleteCase = async (id: string) => {
+    try {
+      await api.delete(`/api/cases/${id}`);
+      setDeletingId(null);
+      fetchCases();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const initPurgeAll = () => {
+    if (confirmingPurge) {
+      executePurgeAll();
+    } else {
+      setConfirmingPurge(true);
+      setTimeout(() => {
+        setConfirmingPurge(false);
+      }, 4000);
+    }
+  };
+
+  const executePurgeAll = async () => {
+    try {
+      await api.delete('/api/cases');
+      setConfirmingPurge(false);
+      fetchCases();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     fetchCases();
@@ -142,6 +189,18 @@ export default function Database() {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={initPurgeAll}
+            className={cn(
+              "px-4 py-2 rounded text-[11px] font-bold transition-all uppercase tracking-widest flex items-center gap-2",
+              confirmingPurge 
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white animate-pulse" 
+                : "bg-white border border-rose-200 text-rose-600 hover:bg-rose-50/50"
+            )}
+          >
+            {confirmingPurge ? <AlertTriangle size={14} className="text-white" /> : <Trash2 size={14} className="text-rose-500" />}
+            {confirmingPurge ? "Confirm Clear database?" : "Clear database"}
+          </button>
+          <button
             onClick={fetchCases}
             className="px-4 py-2 bg-white border border-border text-gray-500 rounded text-[11px] font-bold hover:bg-gray-50 transition-colors uppercase tracking-widest flex items-center gap-2"
           >
@@ -169,7 +228,7 @@ export default function Database() {
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">SQL-Sync Live</span>
            </div>
         </div>
-        <div className="overflow-x-auto">
+         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-border">
               <tr>
@@ -180,19 +239,20 @@ export default function Database() {
                 <th className="px-6 py-4 text-left font-bold">FMS Status</th>
                 <th className="px-6 py-4 text-left font-bold">Resolution</th>
                 <th className="px-6 py-4 text-right font-bold">Who Entered Case (Staff ID)</th>
+                <th className="px-6 py-4 text-center font-bold w-16">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                      <RefreshCcw className="animate-spin inline-block text-brand mb-2" />
                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest animate-pulse">Syncing Audit Stream...</p>
                   </td>
                 </tr>
               ) : paginatedCases.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic">No records present in the local database grid</p>
                   </td>
                 </tr>
@@ -228,6 +288,24 @@ export default function Database() {
                         {c.createdByName || c.createdByUid || 'System'}
                       </p>
                       <p className="text-[9px] text-gray-400 font-mono italic mt-0.5">24H_SHIFT_TEAM</p>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <button
+                        onClick={(e) => initCaseDelete(c.id, e)}
+                        className={cn(
+                          "p-1.5 rounded transition-all inline-flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer",
+                          deletingId === c.id 
+                            ? "bg-red-500 text-white font-bold text-[9px] px-2 py-1 leading-none animate-pulse" 
+                            : "text-slate-400 hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100"
+                        )}
+                        title={deletingId === c.id ? "Click again to confirm" : "Delete Case"}
+                      >
+                        {deletingId === c.id ? (
+                          "Confirm?"
+                        ) : (
+                          <Trash2 size={13} />
+                        )}
+                      </button>
                     </td>
                   </tr>
                 ))
