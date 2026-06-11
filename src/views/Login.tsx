@@ -117,8 +117,38 @@ export default function Login() {
               )}
             </button>
           </form>
-          
 
+          <div className="mt-8 pt-6 border-t border-slate-100 text-left">
+            <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest mb-3 text-center">Authorized Fraud Operators</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-medium">
+              {[
+                { id: 'PS101435', name: 'Zaim', role: 'Admin' },
+                { id: 'PS101436', name: 'Faris', role: 'Staff' },
+                { id: 'PS101477', name: 'Nabil', role: 'Staff' },
+                { id: 'PS101405', name: 'Naja', role: 'Staff' },
+                { id: 'PS101480', name: 'Izzat', role: 'Staff' },
+              ].map((op) => (
+                <button
+                  key={op.id}
+                  type="button"
+                  onClick={() => {
+                    setEmail(op.id);
+                    setPassword('Affin123');
+                  }}
+                  className="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 hover:border-indigo-200 rounded-xl transition-all text-left text-slate-700 group cursor-pointer"
+                >
+                  <div className="truncate">
+                    <span className="font-mono font-extrabold text-slate-900 group-hover:text-indigo-600">{op.id}</span>
+                    <span className="ml-1 text-slate-500 text-xs">({op.name})</span>
+                  </div>
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">{op.role}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[9px] text-slate-400 font-semibold text-center mt-3 uppercase tracking-wider">
+              💡 Touch any operator card above to instantly pre-fill authorization credentials
+            </p>
+          </div>
         </div>
       </motion.div>
     </div>

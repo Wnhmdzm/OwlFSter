@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile({
           ...data,
           uid: data.id || data.uid || '',
-          isActive: data.isActive === 1
+          isActive: data.isActive === 1 || data.isActive === true || String(data.isActive) === '1' || String(data.isActive) === 'true'
         } as UserProfile);
       } else {
         logout();
