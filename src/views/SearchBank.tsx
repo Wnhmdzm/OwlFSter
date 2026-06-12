@@ -17,6 +17,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { cn } from '../lib/utils';
 
 interface BankRule {
   name: string;
@@ -267,215 +268,247 @@ export default function SearchBank() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <Building2 className="text-brand" size={24} />
-          Search Financial Institution
-        </h2>
-        <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">
-          Identify Malaysian saving/current bank accounts with instant regex rule mapping
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black">
+            <Building2 size={20} />
+          </div>
+          <div>
+            <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+              Search FI <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-black uppercase tracking-wider">Active</span>
+            </h2>
+            <p className="text-slate-500 text-xs">
+              Instant Bank Account Categorizer & Regex Rule Mapper for Malaysian FIs.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-450 uppercase font-black border border-slate-200 px-3 py-1.5 rounded-xl bg-slate-50">
+            Rules mapped: {MALAYSIAN_BANKS.length} FIs
+          </span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Input box */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="minimal-card p-6 space-y-4">
-            <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-              <Sparkles size={14} className="text-brand animate-pulse" />
-              Ingestion Terminal
+      {/* Input container ON TOP */}
+      <div className="minimal-card p-6 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <Sparkles size={13} className="text-indigo-600 animate-pulse" />
+              Ingestion Terminal & Quick Analysis
             </h3>
+            <p className="text-slate-500 text-[11px]">Paste full cells, raw lines or plain account digits to run instant lookup.</p>
+          </div>
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-[10px] font-black uppercase text-slate-400 mr-1 bg-slate-50 px-2 py-1 rounded">Quick Inputs:</span>
+            <button 
+              onClick={() => handleQuickPasteExample("164212345678")}
+              className="px-2.5 py-1 text-[10px] font-mono text-indigo-600 hover:text-white bg-indigo-50 border border-indigo-100 hover:bg-indigo-600 hover:border-indigo-600 rounded-lg transition-all"
+            >
+              Maybank (164...)
+            </button>
+            <button 
+              onClick={() => handleQuickPasteExample("70451234567890")}
+              className="px-2.5 py-1 text-[10px] font-mono text-indigo-600 hover:text-white bg-indigo-50 border border-indigo-100 hover:bg-indigo-600 hover:border-indigo-600 rounded-lg transition-all"
+            >
+              CIMB (704...)
+            </button>
+            <button 
+              onClick={() => handleQuickPasteExample("100123456789")}
+              className="px-2.5 py-1 text-[10px] font-mono text-indigo-600 hover:text-white bg-indigo-50 border border-indigo-100 hover:bg-indigo-600 hover:border-indigo-600 rounded-lg transition-all"
+            >
+              Affin Bank (100...)
+            </button>
+          </div>
+        </div>
 
-            <div>
-              <label className="label-minimal">Paste Account / Raw Copy Text</label>
-              <textarea
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-                placeholder="Paste the bank account number or copy-pasted sheet cells here..."
-                className="w-full h-36 p-3 bg-gray-50 border border-slate-200 rounded text-xs font-mono resize-none focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand transition-all"
-                id="bank_pasted_data_input"
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleClassify}
-                disabled={isClassifying || !pasteText.trim()}
-                className="flex-1 py-2.5 bg-brand text-white text-[11px] font-black uppercase tracking-widest rounded shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all disabled:opacity-50"
-                id="analyze_bank_bttn"
-              >
-                {isClassifying ? (
-                  <RefreshCw className="animate-spin inline mr-1" size={12} />
-                ) : (
-                  <Search className="inline mr-1" size={12} />
-                )}
-                Analyze Account
-              </button>
-              
+        <div className="relative">
+          <input
+            type="text"
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleClassify();
+            }}
+            placeholder="Type or paste Malaysian bank account number here (e.g. 164212345678) and press Enter..."
+            className="w-full pl-4 pr-32 py-4 bg-slate-50 hover:bg-slate-50/80 border border-slate-200 focus:border-indigo-500 text-sm font-semibold rounded-2xl outline-none transition-all shadow-inner"
+            id="bank_pasted_data_input"
+          />
+          <div className="absolute right-2 top-2 flex items-center gap-1.5">
+            {pasteText && (
               <button
                 type="button"
                 onClick={() => { setPasteText(''); setResults([]); setError(null); }}
-                className="px-4 py-2.5 bg-white border border-border text-gray-500 text-[11px] font-bold rounded uppercase tracking-widest hover:bg-gray-50"
+                className="px-3 py-2 text-slate-400 hover:text-slate-600 text-xs font-bold"
               >
-                Reset
+                Clear
               </button>
-            </div>
-
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-100 rounded text-xs text-red-700 font-medium flex items-center gap-2">
-                <AlertCircle size={14} />
-                <span>{error}</span>
-              </div>
             )}
-          </div>
-
-          <div className="minimal-card p-6 space-y-4">
-            <h3 className="label-minimal">Operational Tips</h3>
-            <div className="space-y-3">
-              <p className="text-[11px] text-gray-500 leading-relaxed">
-                Our database checks lengths from 10 to 16 digits and cross-references them with specific regional routing flags of major Malaysian institutions.
-              </p>
-              <div className="pt-2 border-t border-gray-100">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Try these sample mock numbers:</span>
-                <div className="flex flex-col gap-1.5 mt-2">
-                  <button 
-                    onClick={() => handleQuickPasteExample("Affin Account Transfer: 100123456789")}
-                    className="text-left text-[11px] text-indigo-600 hover:underline font-mono truncate"
-                  >
-                    Affin Bank (12-digit: 100...)
-                  </button>
-                  <button 
-                    onClick={() => handleQuickPasteExample("Transfer to Maybank saving 164212345678")}
-                    className="text-left text-[11px] text-indigo-600 hover:underline font-mono truncate"
-                  >
-                    Maybank (12-digit: 164...)
-                  </button>
-                  <button 
-                    onClick={() => handleQuickPasteExample("CIMB Core account: 70451234567890")}
-                    className="text-left text-[11px] text-indigo-600 hover:underline font-mono truncate"
-                  >
-                    CIMB (14-digit: 704...)
-                  </button>
-                </div>
-              </div>
-            </div>
+            <button
+              onClick={handleClassify}
+              disabled={isClassifying || !pasteText.trim()}
+              className="px-5 py-2.5 bg-neutral-900 border border-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-lg disabled:opacity-50"
+              id="analyze_bank_bttn"
+            >
+              {isClassifying ? (
+                <RefreshCw className="animate-spin" size={13} />
+              ) : (
+                <Search size={13} />
+              )}
+              Analyze
+            </button>
           </div>
         </div>
 
-        {/* Output list of matched banks */}
-        <div className="lg:col-span-8 space-y-4">
-          <AnimatePresence mode="popLayout">
-            {results.length > 0 ? (
-              results.map((res, accIdx) => (
-                <motion.div
-                  key={res.accountNo + accIdx}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="minimal-card overflow-hidden"
-                >
-                  {/* Account detail line */}
-                  <div className="px-6 py-4 bg-slate-50 border-b border-border flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CreditCard size={16} className="text-slate-500" />
-                      <span className="text-xs font-black uppercase text-slate-400 tracking-wider">Pasted Target:</span>
-                      <span className="font-mono text-sm font-black text-slate-900 tracking-tight">{res.accountNo}</span>
-                      <span className="text-[10px] bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded">
-                        {res.accountNo.length} Digits
-                      </span>
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 font-medium flex items-center gap-2">
+            <AlertCircle size={14} className="shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Output results list */}
+      <div className="space-y-6">
+        <AnimatePresence mode="popLayout">
+          {results.length > 0 ? (
+            results.map((res, accIdx) => (
+              <motion.div
+                key={res.accountNo + accIdx}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="minimal-card overflow-hidden"
+              >
+                {/* Account details top line */}
+                <div className="px-6 py-4 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                      <CreditCard size={14} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Searched Target</span>
+                        <span className="font-mono text-sm font-black text-slate-900 tracking-tight selection:bg-indigo-200">{res.accountNo}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Length: <strong className="text-slate-600 font-bold">{res.accountNo.length} Digits</strong> • Extracted via rule engine</p>
                     </div>
                   </div>
-
-                  {/* Matching results */}
-                  <div className="p-6 space-y-4">
-                    {res.matches.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {res.matches.map((match, bnkIdx) => (
-                          <div 
-                            key={match.bank.shortName}
-                            className={`p-4 border rounded-xl flex flex-col justify-between transition-all bg-white hover:shadow-md ${
-                              bnkIdx === 0 ? "border-brand ring-1 ring-brand/30" : "border-slate-200"
-                            }`}
-                          >
-                            <div>
-                              <div className="flex justify-between items-start mb-2">
-                                <span className={`px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-gradient-to-r ${match.bank.color}`}>
-                                  {match.bank.shortName}
-                                </span>
-                                <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest bg-gray-100 px-2 py-0.5 rounded">
-                                  {match.score}% match
-                                </span>
-                              </div>
-                              <h4 className="text-xs font-black text-slate-800 leading-tight mb-1">{match.bank.name}</h4>
-                              <p className="text-[10px] text-gray-500 leading-normal mb-3">{match.bank.description}</p>
-                            </div>
-
-                            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                              <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-slate-400">
-                                {match.isExactLength ? (
-                                  <span className="text-emerald-500">✓ Length OK</span>
-                                ) : (
-                                  <span className="text-slate-400">✗ Length Diff</span>
-                                )}
-                                <span>•</span>
-                                {match.isPrefixMatch ? (
-                                  <span className="text-emerald-500">✓ Prefix OK</span>
-                                ) : (
-                                  <span className="text-slate-400">✗ Prefix Diff</span>
-                                )}
-                              </div>
-                              
-                              <button
-                                onClick={() => handleCopy(res.accountNo, match.bank.name, accIdx, bnkIdx)}
-                                className="px-2.5 py-1 bg-gray-50 hover:bg-brand hover:text-white rounded text-[10px] font-bold text-slate-600 transition-all border border-slate-200"
-                              >
-                                {copiedIndex?.accIndex === accIdx && copiedIndex?.bankIndex === bnkIdx ? (
-                                  <span className="flex items-center gap-1 text-[9px]">
-                                    <ClipboardCheck size={11} /> COPIED
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center gap-1">
-                                    <Copy size={11} /> Copy
-                                  </span>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-6 text-center border-2 border-dashed border-slate-200 rounded-xl space-y-2">
-                        <HelpCircle className="mx-auto text-slate-300" size={32} />
-                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">No definite bank match</h4>
-                        <p className="text-[10px] text-slate-400 max-w-sm mx-auto">
-                          The account number does not perfectly align with any common Malaysian bank sequences. Double check the input digits.
-                        </p>
-                      </div>
-                    )}
+                  <div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(res.accountNo);
+                        alert("Account number copied to clipboard!");
+                      }}
+                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-[10px] font-bold hover:bg-slate-50 active:scale-95 transition-all flex items-center gap-1 shadow-sm"
+                    >
+                      <Copy size={11} /> Copy Raw Account
+                    </button>
                   </div>
-                </motion.div>
-              ))
-            ) : (
-              <div className="minimal-card p-12 text-center space-y-4 flex flex-col items-center justify-center min-h-[300px]">
-                <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center shadow-inner">
-                  <Building2 size={24} />
                 </div>
-                <div className="space-y-1">
-                  <h4 className="text-xs font-black uppercase text-slate-800 tracking-widest">Waiting for Account Input</h4>
-                  <p className="text-xs text-slate-400 max-w-md">
-                    Paste a saving or current account number into the left terminal to identify which Malaysian Financial Institution it belongs to.
-                  </p>
+
+                {/* Grid of matched Suggestion Cards */}
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Matched Bank Recommendations</h4>
+                    <span className="text-[10px] text-slate-500 font-semibold">{res.matches.length} matches found</span>
+                  </div>
+
+                  {res.matches.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {res.matches.map((match, bnkIdx) => (
+                        <div 
+                          key={match.bank.shortName}
+                          className={`p-4 border rounded-2xl flex flex-col justify-between transition-all bg-white hover:border-indigo-500 hover:shadow-lg ${
+                            bnkIdx === 0 ? "border-indigo-500 shadow-md ring-1 ring-indigo-500/15" : "border-slate-100"
+                          }`}
+                        >
+                          <div>
+                            {/* Matching Score percentage and Badge */}
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                              <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-gradient-to-r ${match.bank.color} shadow-sm`}>
+                                {match.bank.shortName}
+                              </span>
+                              
+                              {/* Percentage element */}
+                              <div className="flex items-center gap-1.5">
+                                <span className={cn(
+                                  "text-xs font-black",
+                                  match.score >= 90 ? "text-emerald-600" : match.score >= 50 ? "text-amber-600" : "text-slate-400"
+                                )}>
+                                  {match.score}% MATCH
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* FI full name and info */}
+                            <h5 className="text-xs font-bold text-slate-800 leading-tight mb-1">{match.bank.name}</h5>
+                            <p className="text-[11px] text-slate-400 leading-relaxed mb-4">{match.bank.description}</p>
+                          </div>
+
+                          {/* Matching factors and copy block */}
+                          <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="text-slate-400">Match precision:</span>
+                              <div className="flex gap-1.5">
+                                <span className={cn("px-1 rounded text-[9px] font-extrabold", match.isExactLength ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400")}>
+                                  {match.isExactLength ? 'Length ✓' : 'Length ✗'}
+                                </span>
+                                <span className={cn("px-1 rounded text-[9px] font-extrabold", match.isPrefixMatch ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400")}>
+                                  {match.isPrefixMatch ? 'Prefix ✓' : 'Prefix ✗'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => handleCopy(res.accountNo, match.bank.name, accIdx, bnkIdx)}
+                              className="mt-2 w-full py-2 bg-slate-50 hover:bg-indigo-650 hover:text-white rounded-xl text-xs font-bold text-slate-700 transition-all border border-slate-200 hover:border-indigo-600 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                            >
+                              {copiedIndex?.accIndex === accIdx && copiedIndex?.bankIndex === bnkIdx ? (
+                                <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-extrabold">
+                                  <ClipboardCheck size={12} /> COPIED DETAILS
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1">
+                                  <Copy size={12} /> Copy Combined details
+                                </span>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-10 text-center border border-dashed border-slate-100 rounded-2xl max-w-sm mx-auto space-y-3">
+                      <HelpCircle className="mx-auto text-slate-300" size={32} />
+                      <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest">No Bank Matches Found</h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Account number does not align with predefined rules for Malaysian financial institutions. Please review digits.
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <div className="pt-2">
-                  <span className="text-[9px] uppercase font-black tracking-widest text-indigo-500 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full animate-pulse">
-                    RULE-ENGINE ST_BANK_V1.0
-                  </span>
-                </div>
+              </motion.div>
+            ))
+          ) : (
+            <div className="minimal-card p-12 text-center space-y-4 flex flex-col items-center justify-center min-h-[350px]">
+              <div className="w-14 h-14 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center shadow-inner animate-bounce">
+                <Building2 size={28} />
               </div>
-            )}
-          </AnimatePresence>
-        </div>
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-black uppercase text-slate-800 tracking-widest">Waiting for Search Term</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                  Enter bank account digits in the search box above to evaluate routing rules with visual percentage breakdowns.
+                </p>
+              </div>
+              <div className="pt-2">
+                <span className="text-[9px] uppercase font-black tracking-widest text-indigo-500 bg-indigo-50 border border-indigo-100 px-3/5 py-1.5 rounded-full">
+                  Instant Match Engine ACTIVE
+                </span>
+              </div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

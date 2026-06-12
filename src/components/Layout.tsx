@@ -110,18 +110,6 @@ export default function Layout({ children }: LayoutProps) {
             </NavLink>
 
             <NavLink
-              to="/search-institution"
-              className={({ isActive }) => cn(
-                "text-[11px] font-bold uppercase tracking-widest py-5 transition-all border-b-2",
-                isActive 
-                  ? "text-brand border-brand" 
-                  : "text-gray-400 border-transparent hover:text-brand"
-              )}
-            >
-              Search Institution
-            </NavLink>
-
-            <NavLink
               to="/database"
               className={({ isActive }) => cn(
                 "text-[11px] font-bold uppercase tracking-widest py-5 transition-all border-b-2",
@@ -131,6 +119,18 @@ export default function Layout({ children }: LayoutProps) {
               )}
             >
               Database
+            </NavLink>
+
+            <NavLink
+              to="/search-institution"
+              className={({ isActive }) => cn(
+                "text-[11px] font-bold uppercase tracking-widest py-5 transition-all border-b-2",
+                isActive 
+                  ? "text-brand border-brand" 
+                  : "text-gray-400 border-transparent hover:text-brand"
+              )}
+            >
+              Search FI
             </NavLink>
 
             {/* Admin menu shows strictly for authorized admin (PS101435) */}
